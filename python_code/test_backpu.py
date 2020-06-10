@@ -72,7 +72,7 @@ class ReaderThread(threading.Thread):
 		while self.alive and self.serial.is_open:
 			try:
 				# read all that is ther or wait for one byte(blocking)
-				data = self.serial.read()
+				data = self.serial.read(self.serial.in_waiting or 1)
 			except serial.SerialException as e:
 				# probably some I/O problem such as disconnected USB serial
 				# adapters -> Exit
@@ -169,10 +169,7 @@ class rawProtocal(Protocol):
 		self.transport = transport
 		self.running = True
 		self.strBuf = ""
-		self.strMsg = ""
 		self.msgFlag =0
-		self.msgIdx =0
-		self.dataLength = 10
 		
 
 	#연결 종료시 발생
@@ -183,19 +180,24 @@ class rawProtocal(Protocol):
 	def data_received(self, data):
 		#입력된 데이터와 키맵 비교 
 		#print(data)
-		if data == b'<' and self.msgIdx ==0:
-			self.strMsg = self.strBuf
-			self.dataLength = 10
+		if data == b'<':
 			self.strBuf = ""
-		if data == b'\n' and self.dataLength<= self.msgIdx:
-			self.strMsg = self.strBuf
-			self.strBuf = ""
+		if data == b'\n' :
 			self.msgFlag =1
-			self.msgIdx = 0
 
-		self.strBuf = self.strBuf + "%02x " % data[0]
-		self.msgIdx = self.msgIdx +1
-		
+		for i in range(len(data)):
+			#self.strBuf = self.strBuf + "%02x" % int.from_bytes(data[i],'big')
+			self.strBuf = self.strBuf + "%02x " % data[i]
+
+		if data in Keymap:
+			# print string
+			#print(Keymap[data][1])
+			
+			key = Keymap[data][0]
+
+			if key == KEY_CIRCLE:
+				self.running = False
+
 	# 데이터를 보낼때 함수
 	def write(self,data):
 		print(data)
@@ -205,33 +207,23 @@ class rawProtocal(Protocol):
 	def isDone(self):
 		return self.running
 
-def timer():
-	now = time.localtime(time.time())
-	return now[5]
-
 #포트 설정
 PORT = '/dev/ttyUSB0'
 #연결
-ser = serial.serial_for_url(PORT,baudrate=115200,timeout=0.001)
+ser = serial.serial_for_url(PORT,baudrate=115200,timeout=1)
+
+tmp = 1;
+strBuf = "";
 
 #쓰레드 시작
-now = timer()
-t = now
 with ReaderThread(ser,rawProtocal) as p:
-	with open("log_thread.txt",'w') as f:
+	with open("log.txt",'w') as f:
 		while p.isDone():
-#time.sleep(1)
+			time.sleep(1)
 			if p.msgFlag :
-#print("msg : " + p.strMsg)
-				f.write(p.strMsg+"\n")
+				print("msg : " + p.strBuf)
+				f.write(p.strBuf)
 				p.msgFlag =0
-			if timer()>t:
-				t = timer()
-				print(t-now)
-
-			if (timer()- now) >= 10:
-				print(timer()-now)
-				break
 
 
 

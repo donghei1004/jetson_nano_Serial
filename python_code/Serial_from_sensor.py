@@ -72,7 +72,7 @@ class ReaderThread(threading.Thread):
 		while self.alive and self.serial.is_open:
 			try:
 				# read all that is ther or wait for one byte(blocking)
-				data = self.serial.read(self.serial.in_waiting or 1)
+				data = self.serial.read(1)
 			except serial.SerialException as e:
 				# probably some I/O problem such as disconnected USB serial
 				# adapters -> Exit
@@ -168,6 +168,10 @@ class rawProtocal(Protocol):
 	def connection_made(self,transport):
 		self.transport = transport
 		self.running = True
+		self.strBuf = ""
+		self.strmsg =""
+		self.msgFlag =0
+		
 
 	#연결 종료시 발생
 	def connection_lost(self,exc):
@@ -176,12 +180,17 @@ class rawProtocal(Protocol):
 	# 데이터가 들어오면 이곳에서 처리.
 	def data_received(self, data):
 		#입력된 데이터와 키맵 비교 
-		print(data)
-#		write(data)
-		if data in Keymap:
-			key = Keymap[data][0]
-			if key == KEY_CIRCLE:
-				self.running = False
+		print("len : %d"%len(data))
+		print("data: "+data[0])
+		if data == b'<':
+			self.strmsg = self.strBuf
+			self.strBuf = ""
+		if data == b'\n' or data ==b'\r':
+			self.msgFlag =1
+			self.strmsg = self.strBuf
+
+		self.strBuf = self.strBuf + "%02x " % data
+				
 
 	# 데이터를 보낼때 함수
 	def write(self,data):
@@ -197,10 +206,18 @@ PORT = '/dev/ttyUSB0'
 #연결
 ser = serial.serial_for_url(PORT,baudrate=115200,timeout=1)
 
+tmp = 1;
+strBuf = "";
+
 #쓰레드 시작
 with ReaderThread(ser,rawProtocal) as p:
-	while p.isDone():
-		time.sleep(1)
+	with open("log.txt",'w') as f:
+		while p.isDone():
+			time.sleep(1)
+			if p.msgFlag :
+				print("msg : " + p.strBuf)
+				f.write(p.strmsg+"\n")
+				p.msgFlag =0
 
 
 
