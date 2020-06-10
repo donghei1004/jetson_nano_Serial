@@ -40,7 +40,7 @@ if ser.isOpen():
 
 		dataIdx = 0
 		dataLength = 0
-		dataParams = ['']*7
+		dataParams = [b'']*7
 		startFlag = 0
 		params =0
 		paramIdx=0
@@ -58,9 +58,11 @@ if ser.isOpen():
 				params = 0
 				dataIdx =0
 				dataLength =0
-				dataParams = ['']*7
+				dataParams = [b'']*7
 				if response == b'<':
 					startFlag = FLAG_START
+					#dataParams[params]="0x%02x "%response[0]
+					dataParams[params] = response
 
 			elif startFlag == FLAG_START:
 				if params < 5 : 
@@ -74,7 +76,7 @@ if ser.isOpen():
 					params = params +1
 	
 				if (response != b',') and (response != b'*'):
-					dataParams[params]=dataParams[params] + "0x%02x "%response[0]
+					dataParams[params]=dataParams[params] + response
 
 				dataIdx = dataIdx +1
 
@@ -87,9 +89,9 @@ if ser.isOpen():
 			#print("[{:3},{:0},{:1}] {:2}".format(params,dataIdx,dataLength,' '.join(dataParams)))
 			if startFlag == FLAG_END :
 				chsum = chsum^(b'*'[0])
-				print("{:1}[{:02x}]".format(''.join(dataParams),chsum))
+				print("{:1}[{:02x}]".format(str(b''.join(dataParams)),chsum))
 				startFlag = FLAG_WAIT
-				f.write(' '.join(dataParams))
+				f.write("{:1}[0x{:02x} 0x{:02x}]\n".format(str(b''.join(dataParams)),(chsum>>4),(chsum&0x0F)))
 				
 			if (timer() - now) >= 10:
 				break
