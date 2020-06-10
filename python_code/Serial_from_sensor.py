@@ -168,9 +168,6 @@ class rawProtocal(Protocol):
 	def connection_made(self,transport):
 		self.transport = transport
 		self.running = True
-		self.strBuf = ""
-		self.msgFlag =0
-		
 
 	#연결 종료시 발생
 	def connection_lost(self,exc):
@@ -179,22 +176,10 @@ class rawProtocal(Protocol):
 	# 데이터가 들어오면 이곳에서 처리.
 	def data_received(self, data):
 		#입력된 데이터와 키맵 비교 
-		#print(data)
-		if data == b'<':
-			self.strBuf = ""
-		if data == b'\n' :
-			self.msgFlag =1
-
-		for i in range(len(data)):
-			#self.strBuf = self.strBuf + "%02x" % int.from_bytes(data[i],'big')
-			self.strBuf = self.strBuf + "%02x " % data[i]
-
+		print(data)
+#		write(data)
 		if data in Keymap:
-			# print string
-			#print(Keymap[data][1])
-			
 			key = Keymap[data][0]
-
 			if key == KEY_CIRCLE:
 				self.running = False
 
@@ -212,18 +197,10 @@ PORT = '/dev/ttyUSB0'
 #연결
 ser = serial.serial_for_url(PORT,baudrate=115200,timeout=1)
 
-tmp = 1;
-strBuf = "";
-
 #쓰레드 시작
 with ReaderThread(ser,rawProtocal) as p:
-	with open("log.txt",'w') as f:
-		while p.isDone():
-			time.sleep(1)
-			if p.msgFlag :
-				print("msg : " + p.strBuf)
-				f.write(p.strBuf)
-				p.msgFlag =0
+	while p.isDone():
+		time.sleep(1)
 
 
 

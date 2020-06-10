@@ -168,7 +168,7 @@ class rawProtocal(Protocol):
 	def connection_made(self,transport):
 		self.transport = transport
 		self.running = True
-		self.strBuf = ""
+		self.strBuf = []
 		self.msgFlag =0
 		
 
@@ -179,19 +179,17 @@ class rawProtocal(Protocol):
 	# 데이터가 들어오면 이곳에서 처리.
 	def data_received(self, data):
 		#입력된 데이터와 키맵 비교 
-		#print(data)
+		print(data)
 		if data == b'<':
-			self.strBuf = ""
+			self.strBuf = []
 		if data == b'\n' :
 			self.msgFlag =1
 
-		for i in range(len(data)):
-			#self.strBuf = self.strBuf + "%02x" % int.from_bytes(data[i],'big')
-			self.strBuf = self.strBuf + "%02x " % data[i]
+		self.strBuf += data
 
 		if data in Keymap:
 			# print string
-			#print(Keymap[data][1])
+			print(Keymap[data][1])
 			
 			key = Keymap[data][0]
 
@@ -221,8 +219,8 @@ with ReaderThread(ser,rawProtocal) as p:
 		while p.isDone():
 			time.sleep(1)
 			if p.msgFlag :
-				print("msg : " + p.strBuf)
-				f.write(p.strBuf)
+				print(p.strBuf)
+				f.write(str(p.strBuf)+"\n")
 				p.msgFlag =0
 
 
