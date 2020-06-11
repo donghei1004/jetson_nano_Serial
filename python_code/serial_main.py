@@ -35,7 +35,7 @@ FLAG_WAIT = 0
 
 if ser.isOpen():
 	try:
-		f = open("log.txt",'w')
+		rawf = open("log_raw.txt",'w')
 		strBuf = ""
 
 		dataIdx = 0
@@ -61,7 +61,6 @@ if ser.isOpen():
 				dataParams = [b'']*7
 				if response == b'<':
 					startFlag = FLAG_START
-					#dataParams[params]="0x%02x "%response[0]
 					dataParams[params] = response
 
 			elif startFlag == FLAG_START:
@@ -76,6 +75,8 @@ if ser.isOpen():
 					params = params +1
 	
 				if (response != b',') and (response != b'*'):
+					dataParams[params]=dataParams[params] + response
+				elif (params==4) and (len(dataParams[params]) >0):
 					dataParams[params]=dataParams[params] + response
 
 				dataIdx = dataIdx +1
@@ -94,26 +95,29 @@ if ser.isOpen():
 					yaw = int.from_bytes(dataParams[4][:2],'little',signed=True)/16.0
 					pitch = int.from_bytes(dataParams[4][2:4],'little',signed=True)/16.0
 					roll = int.from_bytes(dataParams[4][4:],'little',signed=True)/16.0
-					print("BNO {:.3f}\t{:.3f}\t{:.3f}".format(roll,pitch,yaw))
+					print("BNO[{:1}|{:02x}] {:.3f}\t{:.3f}\t{:.3f}".format(str(dataParams[5][:2].decode()),chsum,roll,pitch,yaw))
+					#f.write("BNO[{:1}|{:02x}] {:.3f}\t{:.3f}\t{:.3f}\n".format(str(dataParams[5][:2].decode()),chsum,roll,pitch,yaw))
 				elif (dataParams[3] == b'2') and (len(dataParams[4])>=12):		# GPS Data
 					gps_valid = dataParams[4][0]
 					gps_time = int.from_bytes(dataParams[4][1:5],'little')/1000.0
 					gps_lat = int.from_bytes(dataParams[4][5:9],'little')/1000000.0
 					gps_lng = int.from_bytes(dataParams[4][9:],'little')/1000000.0
-					print("GPS {:.3f}\t{:.6f}\t{:.6f}".format(gps_time,gps_lat,gps_lng))
+					print("GPS[{:1}|{:02x}] {:.3f}\t{:.6f}\t{:.6f}".format(str(dataParams[5][:2].decode()),chsum,gps_time,gps_lat,gps_lng))
+					#f.write("GPS[{:1}|{:02x}] {:.3f}\t{:.6f}\t{:.6f}\n".format(str(dataParams[5][:2].decode()),chsum,gps_time,gps_lat,gps_lng))
+					rawf.write("[{:3}] {:1}[0x{:02x} 0x{:02x}]\n".format(gps_time,str(b''.join(dataParams)),(chsum>>4),(chsum&0x0F)))
 				else :
 					print("Parse Error : ")
 					print(str(dataParams))
 						
 
 				startFlag = FLAG_WAIT
-				f.write("{:1}[0x{:02x} 0x{:02x}]\n".format(str(b''.join(dataParams)),(chsum>>4),(chsum&0x0F)))
+				rawf.write("{:1}[0x{:02x} 0x{:02x}]\n".format(str(b''.join(dataParams)),(chsum>>4),(chsum&0x0F)))
 				
-			if (timer() - now) >= 10:
-				break
+#			if (timer() - now) >= 10:
+#break
 
 		ser.close()
-		f.close()
+		rawf.close()
 	except Exception as e:
 		print("Error communication...: "+str(e))
 		ser.close()
