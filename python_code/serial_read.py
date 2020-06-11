@@ -89,7 +89,14 @@ if ser.isOpen():
 			#print("[{:3},{:0},{:1}] {:2}".format(params,dataIdx,dataLength,' '.join(dataParams)))
 			if startFlag == FLAG_END :
 				chsum = chsum^(b'*'[0])
-				print("{:1}[{:02x}]".format(str(b''.join(dataParams)),chsum))
+				#print("{:1}[{:02x}]".format(str(b''.join(dataParams)),chsum))
+				if dataParams[3] == b'1':		# BNO Data
+					yaw = int.from_bytes(dataParams[4][:2],'little',signed=True)/16.0
+					pitch = int.from_bytes(dataParams[4][2:4],'little',signed=True)/16.0
+					roll = int.from_bytes(dataParams[4][4:],'little',signed=True)/16.0
+					print("{:.3f}\t{:.3f}\t{:.3f}".format(roll,pitch,yaw))
+				elif dataParams[3] == b'2':		# GPS Data
+					roll = 0	
 				startFlag = FLAG_WAIT
 				f.write("{:1}[0x{:02x} 0x{:02x}]\n".format(str(b''.join(dataParams)),(chsum>>4),(chsum&0x0F)))
 				
